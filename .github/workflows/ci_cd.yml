@@ -1,0 +1,67 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  ci-cd:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      id-token: write
+
+    services:
+      server:
+        image: yujiosaka/cronyx-server:latest
+        ports:
+          - 3000:3000
+        env:
+          SERVER_PORT: "3000"
+          TIMEZONE: UTC
+          JOB_STORE_SOURCE: mongodb
+          JOB_STORE_URL: mongodb://mongodb:27017/test
+
+      mongodb:
+        image: mongo:latest
+        ports:
+          - 27017:27017
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Install dependencies
+        run: |
+          bun install
+
+      - name: Lint with Eslint
+        run: |
+          bun run lint
+
+      - name: Check code formatting
+        run: |
+          bun run format:check
+
+      - name: Unit tests
+        run: |
+          bun test
+        env:
+          SERVER_URL: http://127.0.0.1:3000
+          MONGO_URI: mongodb://127.0.0.1:27017/test
+
+      - id: semantic-release
+        name: Run semantic-release
+        run: |
+          bunx semantic-release
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

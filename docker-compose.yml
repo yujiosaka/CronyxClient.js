@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  test:
+    build: .
+    working_dir: /app
+    volumes:
+      - .:/app
+      - node-modules:/app/node_modules
+    environment:
+      MONGO_URI: mongodb://mongodb:27017/test
+      SERVER_URL: http://server:3000
+      DEBUG: cronyx:*
+    command: bun --watch test
+    restart: always
+    depends_on:
+      - mongodb
+      - server
+
+  server:
+    image: yujiosaka/cronyx-server:latest
+    ports:
+      - 3000:3000
+    environment:
+      SERVER_PORT: "3000"
+      TIMEZONE: UTC
+      JOB_STORE_SOURCE: mongodb
+      JOB_STORE_URL: mongodb://mongodb:27017/test
+    restart: always
+    depends_on:
+      - mongodb
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - 27017:27017
+    restart: always
+
+volumes:
+  node-modules: {}
